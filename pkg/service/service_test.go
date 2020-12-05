@@ -16,16 +16,17 @@ func TestServiceStoreLoad(t *testing.T) {
 
 		// Run for both schema type
 		rootPath := "file_to_delete"
-		repo0 := NewDBListRepo(rootPath, "")
-		repo0.latestFileSchemaID = 0
-		repo1 := NewDBListRepo(rootPath, "")
+		eventPath := "event_log"
+		repo0 := NewDBListRepo(rootPath, NewListItemDBHandler(""), NewEventLogDBHandler(eventPath))
+		repo0.listItemDBHandler.latestFileSchemaID = 0
+		repo1 := NewDBListRepo(rootPath, NewListItemDBHandler(""), NewEventLogDBHandler(eventPath))
 		repos := []*DBListRepo{repo0, repo1}
 
-		f, err := os.Create(rootPath)
-		if err != nil {
-			t.Fatal(err)
-		}
+		f, _ := os.Create(rootPath)
 		defer os.Remove(rootPath)
+
+		os.Create(rootPath)
+		defer os.Remove(eventPath)
 
 		expectedLines := make([]string, 2)
 		expectedLines[0] = "Test ListItem"
@@ -48,6 +49,7 @@ func TestServiceStoreLoad(t *testing.T) {
 			},
 			[]byte(expectedLines[1]),
 		}
+		var err error
 		for _, v := range data {
 			err = binary.Write(f, binary.LittleEndian, v)
 			if err != nil {
@@ -85,16 +87,17 @@ func TestServiceStoreLoad(t *testing.T) {
 	t.Run("Loads from file schema 1", func(t *testing.T) {
 		// Run for both schema type
 		rootPath := "file_to_delete"
-		repo0 := NewDBListRepo(rootPath, "")
-		repo0.latestFileSchemaID = 0
-		repo1 := NewDBListRepo(rootPath, "")
+		eventPath := "event_log"
+		repo0 := NewDBListRepo(rootPath, NewListItemDBHandler(""), NewEventLogDBHandler(eventPath))
+		repo0.listItemDBHandler.latestFileSchemaID = 0
+		repo1 := NewDBListRepo(rootPath, NewListItemDBHandler(""), NewEventLogDBHandler(eventPath))
 		repos := []*DBListRepo{repo0, repo1}
 
-		f, err := os.Create(rootPath)
-		if err != nil {
-			t.Fatal(err)
-		}
+		f, _ := os.Create(rootPath)
 		defer os.Remove(rootPath)
+
+		os.Create(rootPath)
+		defer os.Remove(eventPath)
 
 		expectedLines := make([]string, 2)
 		expectedLines[0] = "Test ListItem"
@@ -117,6 +120,7 @@ func TestServiceStoreLoad(t *testing.T) {
 			},
 			[]byte(expectedLines[1]),
 		}
+		var err error
 		for _, v := range data {
 			err = binary.Write(f, binary.LittleEndian, v)
 			if err != nil {
@@ -155,11 +159,15 @@ func TestServiceStoreLoad(t *testing.T) {
 		// Run for both schema type
 		rootPath0 := "temp0"
 		rootPath1 := "temp1"
+		eventPath0 := "event_log0"
+		eventPath1 := "event_log1"
 		defer os.Remove(rootPath0)
 		defer os.Remove(rootPath1)
-		repo0 := NewDBListRepo(rootPath0, "")
-		repo0.latestFileSchemaID = 0
-		repo1 := NewDBListRepo(rootPath1, "")
+		defer os.Remove(eventPath0)
+		defer os.Remove(eventPath1)
+		repo0 := NewDBListRepo(rootPath0, NewListItemDBHandler(""), NewEventLogDBHandler(eventPath0))
+		repo0.listItemDBHandler.latestFileSchemaID = 0
+		repo1 := NewDBListRepo(rootPath1, NewListItemDBHandler(""), NewEventLogDBHandler(eventPath1))
 		repos := []*DBListRepo{repo0, repo1}
 
 		for i, repo := range repos {
@@ -214,8 +222,10 @@ func TestServiceStoreLoad(t *testing.T) {
 
 func TestServiceAdd(t *testing.T) {
 	rootPath := "file_to_delete"
-	mockListRepo := NewDBListRepo(rootPath, "")
+	eventPath := "event_path"
+	mockListRepo := NewDBListRepo(rootPath, NewListItemDBHandler(""), NewEventLogDBHandler(eventPath))
 	defer os.Remove(rootPath)
+	defer os.Remove(eventPath)
 
 	item2 := ListItem{
 		Line: "Old existing created line",
@@ -353,8 +363,10 @@ func TestServiceAdd(t *testing.T) {
 
 func TestServiceDelete(t *testing.T) {
 	rootPath := "file_to_delete"
-	mockListRepo := NewDBListRepo(rootPath, "")
+	eventPath := "event_path"
+	mockListRepo := NewDBListRepo(rootPath, NewListItemDBHandler(""), NewEventLogDBHandler(eventPath))
 	defer os.Remove(rootPath)
+	defer os.Remove(eventPath)
 
 	t.Run("Delete item from head of list", func(t *testing.T) {
 		item3 := ListItem{
@@ -493,8 +505,10 @@ func TestServiceDelete(t *testing.T) {
 
 func TestServiceMove(t *testing.T) {
 	rootPath := "file_to_delete"
-	mockListRepo := NewDBListRepo(rootPath, "")
+	eventPath := "event_path"
+	mockListRepo := NewDBListRepo(rootPath, NewListItemDBHandler(""), NewEventLogDBHandler(eventPath))
 	defer os.Remove(rootPath)
+	defer os.Remove(eventPath)
 
 	t.Run("Move item up from bottom", func(t *testing.T) {
 		item3 := ListItem{
@@ -881,8 +895,10 @@ func TestServiceMove(t *testing.T) {
 
 func TestServiceUpdate(t *testing.T) {
 	rootPath := "file_to_delete"
-	mockListRepo := NewDBListRepo(rootPath, "")
+	eventPath := "event_path"
+	mockListRepo := NewDBListRepo(rootPath, NewListItemDBHandler(""), NewEventLogDBHandler(eventPath))
 	defer os.Remove(rootPath)
+	defer os.Remove(eventPath)
 
 	item3 := ListItem{
 		Line: "Third",
@@ -901,7 +917,7 @@ func TestServiceUpdate(t *testing.T) {
 	mockListRepo.Save()
 
 	expectedLine := "Oooo I'm new"
-	err := mockListRepo.Update(expectedLine, &[]byte{}, &item2)
+	err := mockListRepo.Update(expectedLine, []byte{}, &item2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -920,8 +936,10 @@ func TestServiceUpdate(t *testing.T) {
 
 func TestServiceMatch(t *testing.T) {
 	rootPath := "file_to_delete"
-	mockListRepo := NewDBListRepo(rootPath, "")
+	eventPath := "event_path"
+	mockListRepo := NewDBListRepo(rootPath, NewListItemDBHandler(""), NewEventLogDBHandler(eventPath))
 	defer os.Remove(rootPath)
+	defer os.Remove(eventPath)
 
 	t.Run("Full match items in list", func(t *testing.T) {
 		item5 := ListItem{
@@ -1207,13 +1225,15 @@ func TestServiceMatch(t *testing.T) {
 func TestServiceEditPage(t *testing.T) {
 	t.Skip("New file schemas save notes within the main list item db file")
 	rootPath := "file_to_delete"
+	eventPath := "event_path"
 	notesDir := "notes"
 	os.MkdirAll(notesDir, os.ModePerm)
 	defer os.Remove(rootPath)
+	defer os.Remove(eventPath)
 	defer os.RemoveAll(notesDir)
 	// TODO notesDir can be removed now
 
-	mockListRepo := NewDBListRepo(rootPath, notesDir)
+	mockListRepo := NewDBListRepo(rootPath, NewListItemDBHandler(notesDir), NewEventLogDBHandler(eventPath))
 
 	oldNote := []byte("I am an old note")
 	item2 := ListItem{
@@ -1223,7 +1243,7 @@ func TestServiceEditPage(t *testing.T) {
 	item1 := ListItem{
 		Line:   "First",
 		parent: &item2,
-		Note:   &oldNote,
+		Note:   oldNote,
 		id:     1,
 	}
 	item2.child = &item1
@@ -1234,13 +1254,13 @@ func TestServiceEditPage(t *testing.T) {
 	stringToWrite := "I am a new line"
 	dataToWrite := []byte(stringToWrite)
 
-	err := mockListRepo.Update(item2.Line, &dataToWrite, &item2)
+	err := mockListRepo.Update(item2.Line, dataToWrite, &item2)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if string(*item2.Note) != stringToWrite {
-		t.Errorf("Expected line %s but got %s", stringToWrite, string(*item1.Note))
+	if string(item2.Note) != stringToWrite {
+		t.Errorf("Expected line %s but got %s", stringToWrite, string(item1.Note))
 	}
 
 	// Assert that file for first note does already exist

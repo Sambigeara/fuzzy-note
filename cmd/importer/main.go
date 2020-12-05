@@ -46,7 +46,7 @@ func walk(db service.ListRepo, oldItem *service.ListItem, nodes []Node, chain []
 		walk(db, oldItem, n.Nodes, newChain, f)
 		fullString := strings.Join(newChain, " >> ")
 		byteNote := []byte(n.Note.Value)
-		err := db.Add(fullString, &byteNote, oldItem, nil)
+		err := db.Add(fullString, byteNote, oldItem, nil)
 		if err != nil {
 			log.Fatal(err)
 			os.Exit(1)
@@ -116,7 +116,7 @@ func main() {
 	// Create (if not exists) the notes subdirectory
 	os.MkdirAll(notesDir, os.ModePerm)
 
-	listRepo := service.NewDBListRepo(rootPath, notesDir)
+	listRepo := service.NewDBListRepo(rootPath, service.NewListItemDBHandler(notesDir), service.NewEventLogDBHandler(rootPath))
 
 	err := importLines(listRepo)
 	if err != nil {

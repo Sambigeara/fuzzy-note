@@ -137,7 +137,7 @@ func (t *Terminal) openEditorSession() error {
 
 	defer os.Remove(tmpfile.Name())
 
-	if _, err := tmpfile.Write(*t.curItem.Note); err != nil {
+	if _, err := tmpfile.Write(t.curItem.Note); err != nil {
 		log.Fatal(err)
 		return err
 	}
@@ -159,7 +159,7 @@ func (t *Terminal) openEditorSession() error {
 		return nil
 	}
 
-	err = t.db.Update(t.curItem.Line, &newDat, t.curItem)
+	err = t.db.Update(t.curItem.Line, newDat, t.curItem)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func (t *Terminal) paint(matches []*service.ListItem, saveWarning bool) error {
 	for i, r := range matches[t.vertOffset:] {
 		offset = i + reservedTopLines
 		// If note is present, indicate with a different style
-		if len(*(r.Note)) > 0 {
+		if len(r.Note) > 0 {
 			style = noteStyle
 		} else {
 			style = t.style

@@ -9,7 +9,7 @@ import (
 func TestTransactionUndo(t *testing.T) {
 	t.Run("Undo on empty db", func(t *testing.T) {
 		rootPath := "file_to_delete"
-		mockListRepo := NewDBListRepo(rootPath, "")
+		mockListRepo := NewDBListRepo(rootPath, NewListItemDBHandler(""), NewEventLogDBHandler(""))
 		defer os.Remove(rootPath)
 
 		err := mockListRepo.Undo()
@@ -17,7 +17,7 @@ func TestTransactionUndo(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(mockListRepo.eventLogger.log) != 1 {
+		if len(mockListRepo.eventLogDBHandler.log) != 1 {
 			t.Errorf("Event log should instantiate with a null event log at idx zero")
 		}
 
@@ -29,26 +29,26 @@ func TestTransactionUndo(t *testing.T) {
 	})
 	t.Run("Undo single item Add", func(t *testing.T) {
 		rootPath := "file_to_delete"
-		mockListRepo := NewDBListRepo(rootPath, "")
+		mockListRepo := NewDBListRepo(rootPath, NewListItemDBHandler(""), NewEventLogDBHandler(""))
 		defer os.Remove(rootPath)
 
 		line := "New item"
 		mockListRepo.Add(line, nil, nil, nil)
 
-		if len(mockListRepo.eventLogger.log) != 2 {
+		if len(mockListRepo.eventLogDBHandler.log) != 2 {
 			t.Errorf("Event log should have one null and one real event in it")
 		}
 
 		matches, _ := mockListRepo.Match([][]rune{}, nil, true)
 
-		logItem := mockListRepo.eventLogger.log[1]
+		logItem := mockListRepo.eventLogDBHandler.log[1]
 		if logItem.eventType != addEvent {
 			t.Errorf("Event log entry should be of type AddEvent")
 		}
 		if logItem.ptr.id != matches[0].id {
 			t.Errorf("Event log list item should have the same id")
 		}
-		if (mockListRepo.eventLogger.curIdx) != 1 {
+		if (mockListRepo.eventLogDBHandler.curIdx) != 1 {
 			t.Errorf("The event logger index should increment to 1")
 		}
 
@@ -66,16 +66,16 @@ func TestTransactionUndo(t *testing.T) {
 			t.Errorf("The root should have been cleared")
 		}
 
-		if len(mockListRepo.eventLogger.log) != 2 {
+		if len(mockListRepo.eventLogDBHandler.log) != 2 {
 			t.Errorf("Event logger should persist the log")
 		}
-		if (mockListRepo.eventLogger.curIdx) != 0 {
+		if (mockListRepo.eventLogDBHandler.curIdx) != 0 {
 			t.Errorf("The event logger index should decrement back to 0")
 		}
 	})
 	t.Run("Undo single item Add and Update", func(t *testing.T) {
 		rootPath := "file_to_delete"
-		mockListRepo := NewDBListRepo(rootPath, "")
+		mockListRepo := NewDBListRepo(rootPath, NewListItemDBHandler(""), NewEventLogDBHandler(""))
 		defer os.Remove(rootPath)
 
 		line := "New item"
@@ -83,16 +83,16 @@ func TestTransactionUndo(t *testing.T) {
 
 		updatedLine := "Updated item"
 		matches, _ := mockListRepo.Match([][]rune{}, nil, true)
-		mockListRepo.Update(updatedLine, &[]byte{}, matches[0])
+		mockListRepo.Update(updatedLine, []byte{}, matches[0])
 
-		if len(mockListRepo.eventLogger.log) != 3 {
+		if len(mockListRepo.eventLogDBHandler.log) != 3 {
 			t.Errorf("Event log should have one null and two real events in it")
 		}
-		if mockListRepo.eventLogger.curIdx != 2 {
+		if mockListRepo.eventLogDBHandler.curIdx != 2 {
 			t.Errorf("Event logger should be at position two")
 		}
 
-		newestLogItem := mockListRepo.eventLogger.log[2]
+		newestLogItem := mockListRepo.eventLogDBHandler.log[2]
 		if newestLogItem.eventType != updateEvent {
 			t.Errorf("Newest event log entry should be of type UpdateEvent")
 		}
@@ -100,7 +100,7 @@ func TestTransactionUndo(t *testing.T) {
 			t.Errorf("Newest event log list item should have the original line")
 		}
 
-		oldestLogItem := mockListRepo.eventLogger.log[1]
+		oldestLogItem := mockListRepo.eventLogDBHandler.log[1]
 		if oldestLogItem.eventType != addEvent {
 			t.Errorf("Oldest event log entry should be of type AddEvent")
 		}
@@ -115,10 +115,10 @@ func TestTransactionUndo(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(mockListRepo.eventLogger.log) != 3 {
+		if len(mockListRepo.eventLogDBHandler.log) != 3 {
 			t.Errorf("Event log should still have three events in it")
 		}
-		if mockListRepo.eventLogger.curIdx != 1 {
+		if mockListRepo.eventLogDBHandler.curIdx != 1 {
 			t.Errorf("Event logger should have decremented to one")
 		}
 
@@ -135,10 +135,10 @@ func TestTransactionUndo(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(mockListRepo.eventLogger.log) != 3 {
+		if len(mockListRepo.eventLogDBHandler.log) != 3 {
 			t.Errorf("Event log should still have three events in it")
 		}
-		if mockListRepo.eventLogger.curIdx != 0 {
+		if mockListRepo.eventLogDBHandler.curIdx != 0 {
 			t.Errorf("Event logger should have decremented to zero")
 		}
 
@@ -152,20 +152,20 @@ func TestTransactionUndo(t *testing.T) {
 	})
 	t.Run("Add twice, Delete twice, Undo twice, Redo once", func(t *testing.T) {
 		rootPath := "file_to_delete"
-		mockListRepo := NewDBListRepo(rootPath, "")
+		mockListRepo := NewDBListRepo(rootPath, NewListItemDBHandler(""), NewEventLogDBHandler(""))
 		defer os.Remove(rootPath)
 
 		line := "New item"
 		mockListRepo.Add(line, nil, nil, nil)
 
-		if len(mockListRepo.eventLogger.log) != 2 {
+		if len(mockListRepo.eventLogDBHandler.log) != 2 {
 			t.Errorf("Event log should have one null and one real event in it")
 		}
-		if mockListRepo.eventLogger.curIdx != 1 {
+		if mockListRepo.eventLogDBHandler.curIdx != 1 {
 			t.Errorf("Event logger should have incremented to one")
 		}
 
-		logItem := mockListRepo.eventLogger.log[1]
+		logItem := mockListRepo.eventLogDBHandler.log[1]
 		if logItem.eventType != addEvent {
 			t.Errorf("Event log entry should be of type AddEvent")
 		}
@@ -184,18 +184,18 @@ func TestTransactionUndo(t *testing.T) {
 		matches, _ = mockListRepo.Match([][]rune{}, nil, true)
 		listItem2 := matches[1]
 
-		if mockListRepo.eventLogger.log[1] != logItem {
+		if mockListRepo.eventLogDBHandler.log[1].ptr != logItem.ptr {
 			t.Errorf("Original log item should still be in the first position in the log")
 		}
 
-		if len(mockListRepo.eventLogger.log) != 3 {
+		if len(mockListRepo.eventLogDBHandler.log) != 3 {
 			t.Errorf("Event log should have one null and two real events in it")
 		}
-		if mockListRepo.eventLogger.curIdx != 2 {
+		if mockListRepo.eventLogDBHandler.curIdx != 2 {
 			t.Errorf("Event logger should have incremented to two")
 		}
 
-		logItem2 := mockListRepo.eventLogger.log[2]
+		logItem2 := mockListRepo.eventLogDBHandler.log[2]
 		if logItem2.eventType != addEvent {
 			t.Errorf("Event log entry should be of type AddEvent")
 		}
@@ -209,14 +209,14 @@ func TestTransactionUndo(t *testing.T) {
 
 		mockListRepo.Delete(listItem2)
 
-		if len(mockListRepo.eventLogger.log) != 4 {
+		if len(mockListRepo.eventLogDBHandler.log) != 4 {
 			t.Errorf("Event log should have one null and three real events in it")
 		}
-		if mockListRepo.eventLogger.curIdx != 3 {
+		if mockListRepo.eventLogDBHandler.curIdx != 3 {
 			t.Errorf("Event logger should have incremented to three")
 		}
 
-		logItem3 := mockListRepo.eventLogger.log[3]
+		logItem3 := mockListRepo.eventLogDBHandler.log[3]
 		if logItem3.eventType != deleteEvent {
 			t.Errorf("Event log entry should be of type DeleteEvent")
 		}
@@ -231,14 +231,14 @@ func TestTransactionUndo(t *testing.T) {
 		mockListRepo.Delete(matches[0])
 		matches, _ = mockListRepo.Match([][]rune{}, nil, true)
 
-		if len(mockListRepo.eventLogger.log) != 5 {
+		if len(mockListRepo.eventLogDBHandler.log) != 5 {
 			t.Errorf("Event log should have one null and four real events in it")
 		}
-		if mockListRepo.eventLogger.curIdx != 4 {
+		if mockListRepo.eventLogDBHandler.curIdx != 4 {
 			t.Errorf("Event logger should have incremented to four")
 		}
 
-		logItem4 := mockListRepo.eventLogger.log[4]
+		logItem4 := mockListRepo.eventLogDBHandler.log[4]
 		if logItem4.eventType != deleteEvent {
 			t.Errorf("Event log entry should be of type DeleteEvent")
 		}
@@ -255,10 +255,10 @@ func TestTransactionUndo(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(mockListRepo.eventLogger.log) != 5 {
+		if len(mockListRepo.eventLogDBHandler.log) != 5 {
 			t.Errorf("Event log should still have five events in it")
 		}
-		if mockListRepo.eventLogger.curIdx != 3 {
+		if mockListRepo.eventLogDBHandler.curIdx != 3 {
 			t.Errorf("Event logger should have decremented to three")
 		}
 
@@ -275,10 +275,10 @@ func TestTransactionUndo(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(mockListRepo.eventLogger.log) != 5 {
+		if len(mockListRepo.eventLogDBHandler.log) != 5 {
 			t.Errorf("Event log should still have five events in it")
 		}
-		if mockListRepo.eventLogger.curIdx != 2 {
+		if mockListRepo.eventLogDBHandler.curIdx != 2 {
 			t.Errorf("Event logger should have decremented to two")
 		}
 
@@ -295,10 +295,10 @@ func TestTransactionUndo(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(mockListRepo.eventLogger.log) != 5 {
+		if len(mockListRepo.eventLogDBHandler.log) != 5 {
 			t.Errorf("Event log should still have five events in it")
 		}
-		if mockListRepo.eventLogger.curIdx != 3 {
+		if mockListRepo.eventLogDBHandler.curIdx != 3 {
 			t.Errorf("Event logger should have incremented to three")
 		}
 
@@ -312,12 +312,12 @@ func TestTransactionUndo(t *testing.T) {
 	})
 	t.Run("Add empty item, update with character, Undo, Redo", func(t *testing.T) {
 		rootPath := "file_to_delete"
-		mockListRepo := NewDBListRepo(rootPath, "")
+		mockListRepo := NewDBListRepo(rootPath, NewListItemDBHandler(""), NewEventLogDBHandler(""))
 		defer os.Remove(rootPath)
 
 		mockListRepo.Add("", nil, nil, nil)
 
-		logItem := mockListRepo.eventLogger.log[1]
+		logItem := mockListRepo.eventLogDBHandler.log[1]
 		if logItem.eventType != addEvent {
 			t.Errorf("Event log entry should be of type AddEvent")
 		}
@@ -325,15 +325,15 @@ func TestTransactionUndo(t *testing.T) {
 		matches, _ := mockListRepo.Match([][]rune{}, nil, true)
 
 		newLine := "a"
-		mockListRepo.Update(newLine, &[]byte{}, matches[0])
+		mockListRepo.Update(newLine, []byte{}, matches[0])
 
-		if len(mockListRepo.eventLogger.log) != 3 {
+		if len(mockListRepo.eventLogDBHandler.log) != 3 {
 			t.Errorf("Event log should have one null and two real events in it")
 		}
-		if mockListRepo.eventLogger.curIdx != 2 {
+		if mockListRepo.eventLogDBHandler.curIdx != 2 {
 			t.Errorf("Event logger should have incremented to two")
 		}
-		logItem2 := mockListRepo.eventLogger.log[2]
+		logItem2 := mockListRepo.eventLogDBHandler.log[2]
 		if logItem2.eventType != updateEvent {
 			t.Errorf("Event log entry should be of type UpdateEvent")
 		}
@@ -348,10 +348,10 @@ func TestTransactionUndo(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(mockListRepo.eventLogger.log) != 3 {
+		if len(mockListRepo.eventLogDBHandler.log) != 3 {
 			t.Errorf("Event log should still have three events in it")
 		}
-		if mockListRepo.eventLogger.curIdx != 1 {
+		if mockListRepo.eventLogDBHandler.curIdx != 1 {
 			t.Errorf("Event logger should have decremented to one")
 		}
 
@@ -359,17 +359,17 @@ func TestTransactionUndo(t *testing.T) {
 		if matches[0].Line != "" {
 			t.Errorf("Undo should have removed the line")
 		}
-		//fmt.Println(mockListRepo.eventLogger.curIdx)
+		//fmt.Println(mockListRepo.eventLogDBHandler.curIdx)
 
 		err = mockListRepo.Redo()
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if len(mockListRepo.eventLogger.log) != 3 {
+		if len(mockListRepo.eventLogDBHandler.log) != 3 {
 			t.Errorf("Event log should still have two events in it")
 		}
-		if mockListRepo.eventLogger.curIdx != 2 {
+		if mockListRepo.eventLogDBHandler.curIdx != 2 {
 			t.Errorf("Event logger should have returned to the head at two")
 		}
 

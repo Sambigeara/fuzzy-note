@@ -13,6 +13,7 @@ import (
 )
 
 const rootFileName = "primary.db"
+const eventLogFileName = "event_log.db"
 
 func main() {
 	var rootDir, notesSubDir string
@@ -29,12 +30,15 @@ func main() {
 	}
 
 	rootPath := path.Join(rootDir, rootFileName)
+	eventLogPath := path.Join(rootDir, eventLogFileName)
 	notesDir := path.Join(rootDir, notesSubDir)
 
 	// Create (if not exists) the notes subdirectory
 	os.MkdirAll(notesDir, os.ModePerm)
 
-	listRepo := service.NewDBListRepo(rootPath, notesDir)
+	listDBHandler := service.NewListItemDBHandler(notesDir)
+	eventLogHandler := service.NewEventLogDBHandler(eventLogPath)
+	listRepo := service.NewDBListRepo(rootPath, listDBHandler, eventLogHandler)
 
 	// Set colourscheme
 	fznColour := strings.ToLower(os.Getenv("FZN_COLOUR"))

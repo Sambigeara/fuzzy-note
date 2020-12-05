@@ -27,23 +27,23 @@ var oppositeEvent = map[eventType]eventType{
 }
 
 // logFuncs represent the undo and redo functions related to a particular transaction event
-type eventLog struct {
+type event struct {
 	eventType eventType
 	ptr       *ListItem
 	undoLine  string
-	undoNote  *[]byte
+	undoNote  []byte
 	redoLine  string
-	redoNote  *[]byte
+	redoNote  []byte
 }
 
 // DbEventLogger implements the TransactionLogger interface
 type DbEventLogger struct {
 	curIdx int // Last index is latest/most recent in history (appends on new events)
-	log    []eventLog
+	log    []event
 }
 
-func (l *DbEventLogger) addLog(e eventType, item *ListItem, newLine string, newNote *[]byte) error {
-	ev := eventLog{
+func (l *EventLogDBHandler) addLog(e eventType, item *ListItem, newLine string, newNote []byte) error {
+	ev := event{
 		eventType: e,
 		ptr:       item,
 		undoLine:  item.Line,
@@ -52,7 +52,7 @@ func (l *DbEventLogger) addLog(e eventType, item *ListItem, newLine string, newN
 		redoNote:  newNote,
 	}
 	// PREPEND newest items to the log
-	//l.log = append([]eventLog{ev}, l.log...)
+	//l.log = append([]event{ev}, l.log...)
 	// Append to log
 	l.log = append(l.log, ev)
 	//fmt.Println(l.log)
